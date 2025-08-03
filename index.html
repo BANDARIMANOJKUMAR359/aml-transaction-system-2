@@ -111,7 +111,7 @@
 
         <div class="upload-section">
             <h3>{% if data %}Upload Another File{% else %}Upload a File to Get Started{% endif %}</h3>
-            <form method="post" enctype="multipart/form-data" action="/upload">
+            <form method="post" enctype="multipart/form-data" action="{{ url_for('main.index') }}">
                 <input type="file" name="file" accept=".csv">
                 <button type="submit">Upload</button>
             </form>
