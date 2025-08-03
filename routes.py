@@ -33,32 +33,32 @@ def index():
                 file.save(filepath)
 
                 # --- Memory-Efficient Processing ---
-                chunk_size = 10000  # Process 10,000 rows at a time
-                suspicious_alerts = []
+                chunk_size = 10000
+                alerts = []
                 total_volume = 0
                 total_transactions = 0
                 payment_formats = Counter()
                 largest_transaction = 0
                 smallest_transaction = float('inf')
-                top_banks_by_volume = Counter()
+                top_from_banks = Counter()
+                top_to_banks = Counter()
 
-                # Define the mapping from user's CSV columns to our internal names
                 column_mapping = {
                     'Amount Paid': 'amount',
                     'Payment Format': 'payment_format',
                     'Is Laundering': 'is_laundering',
                     'Account': 'customer_id',
-                    'To Bank': 'receiving_bank'
+                    'From Bank': 'from_bank',
+                    'To Bank': 'to_bank',
+                    'Timestamp': 'timestamp'
                 }
 
-                # First, get the headers to check them
                 df_head = pd.read_csv(filepath, nrows=0)
                 df_head.columns = df_head.columns.str.strip()
-                if 'Account' not in df_head.columns:
-                    flash('CSV must contain an "Account" column for customer ID.', 'danger')
+                if 'Account' not in df_head.columns or 'From Bank' not in df_head.columns:
+                    flash('CSV must contain "Account", "From Bank", and "To Bank" columns.', 'danger')
                     return redirect(request.url)
 
-                # Process the file in chunks
                 for chunk in pd.read_csv(filepath, chunksize=chunk_size):
                     chunk.columns = chunk.columns.str.strip()
                     chunk.rename(columns=column_mapping, inplace=True)
@@ -69,15 +69,14 @@ def index():
                     if chunk.empty:
                         continue
 
-                    # --- Update Aggregates ---
                     total_volume += chunk['amount'].sum()
                     total_transactions += len(chunk)
                     payment_formats.update(chunk['payment_format'])
                     largest_transaction = max(largest_transaction, chunk['amount'].max())
                     smallest_transaction = min(smallest_transaction, chunk['amount'].min())
-                    top_banks_by_volume.update(chunk.groupby('receiving_bank')['amount'].sum().to_dict())
+                    top_from_banks.update(chunk.groupby('from_bank')['amount'].sum().to_dict())
+                    top_to_banks.update(chunk.groupby('to_bank')['amount'].sum().to_dict())
 
-                    # --- ML and Risk Scoring (on the chunk) ---
                     encoder = OneHotEncoder(handle_unknown='ignore')
                     ml_features = encoder.fit_transform(chunk[['payment_format']])
                     model = IsolationForest(contamination='auto', random_state=42)
@@ -103,26 +102,28 @@ def index():
                     suspicious_df = chunk[chunk['risk_score'] >= 60]
 
                     for index, row in suspicious_df.iterrows():
-                        suspicious_alerts.append({
-                            'customer': row.get('customer_id', 'N/A'),
-                            'amount': row['amount'],
-                            'receiving_bank': row.get('receiving_bank', 'N/A'),
-                            'risk_score': row['risk_score'],
+                        alerts.append({
+                            'Timestamp': row.get('timestamp', 'N/A'),
+                            'From_Bank': row.get('from_bank', 'N/A'),
+                            'To_Bank': row.get('to_bank', 'N/A'),
+                            'Amount': f"{row['amount']:,.2f}",
+                            'Risk_Score': row['risk_score'],
                             'is_ml_anomaly': row['ml_anomaly'] == -1
                         })
                 
-                # Sort all alerts by risk score and take the top 20
-                suspicious_alerts.sort(key=lambda x: x['risk_score'], reverse=True)
+                alerts.sort(key=lambda x: x['Risk_Score'], reverse=True)
 
                 session['dashboard_data'] = {
-                    'total_volume': total_volume,
-                    'total_transactions': total_transactions,
+                    'filename': filename,
+                    'total_volume': f'{total_volume:,.2f}',
+                    'total_transactions': f'{total_transactions:,}',
                     'payment_formats': dict(payment_formats),
-                    'avg_transaction': total_volume / total_transactions if total_transactions > 0 else 0,
-                    'largest_transaction': largest_transaction,
-                    'smallest_transaction': smallest_transaction if smallest_transaction != float('inf') else 0,
-                    'top_banks_by_volume': dict(top_banks_by_volume.most_common(5)),
-                    'suspicious_alerts': suspicious_alerts[:20]
+                    'avg_transaction': f'{total_volume / total_transactions if total_transactions > 0 else 0:,.2f}',
+                    'max_transaction': f'{largest_transaction:,.2f}',
+                    'min_transaction': f'{smallest_transaction if smallest_transaction != float("inf") else 0:,.2f}',
+                    'top_from_banks': {str(k): f'{v:,.2f}' for k, v in top_from_banks.most_common(5)},
+                    'top_to_banks': {str(k): f'{v:,.2f}' for k, v in top_to_banks.most_common(5)},
+                    'alerts': alerts[:20]
                 }
                 flash('File successfully processed!', 'success')
 
