@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AML Transaction Monitoring</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+        <div class="container">
+        <h1>AML Transaction Monitoring System</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if data %}
+        <div class="dashboard">
+            <h2>Dashboard for: <strong>{{ data.filename }}</strong></h2>
+            <div class="metrics">
+                <div class="metric">
+                    <h3>Total Transaction Volume (USD)</h3>
+                    <p>${{ data.total_volume }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Total Transactions</h3>
+                    <p>{{ data.total_transactions }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Average Transaction</h3>
+                    <p>${{ data.avg_transaction }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Largest Transaction</h3>
+                    <p>${{ data.max_transaction }}</p>
+                </div>
+                <div class="metric">
+                    <h3>Smallest Transaction</h3>
+                    <p>${{ data.min_transaction }}</p>
+                </div>
+            </div>
+            <div class="charts">
+                <div>
+                    <h3>Flow of Funds: Top 5</h3>
+                    <h4>Originating Banks (by Volume)</h4>
+                    <ul>
+                    {% for bank, amount in data.top_from_banks.items() %}
+                        <li><strong>Bank {{ bank }}:</strong> ${{ amount }}</li>
+                    {% endfor %}
+                    </ul>
+                    <h4 style="margin-top: 20px;">Receiving Banks (by Volume)</h4>
+                    <ul>
+                    {% for bank, amount in data.top_to_banks.items() %}
+                        <li><strong>Bank {{ bank }}:</strong> ${{ amount }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <h3>Transaction Breakdown by Type</h3>
+                    <ul>
+                    {% for format, count in data.payment_formats.items() %}
+                        <li><strong>{{ format }}:</strong> {{ "{:,}".format(count) }} transactions</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            {% if data.alerts %}
+            <div class="alerts-section">
+                <h2>Suspicious Activity Alerts</h2>
+                <table class="alerts-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>From Bank</th>
+                            <th>To Bank</th>
+                            <th>Amount (USD)</th>
+                            <th>Risk Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for alert in data.alerts %}
+                        <tr>
+                            <td>{{ alert.Timestamp }}</td>
+                            <td>{{ alert.From_Bank }}</td>
+                            <td>{{ alert.To_Bank }}</td>
+                            <td>${{ alert.Amount }}</td>
+                            <td>
+                                <div class="risk-score-cell">
+                                    <div class="risk-bar-container">
+                                        <div class="risk-bar {{ alert.Risk_Level }}" style="width: {{ alert.Risk_Score }}%;"></div>
+                                    </div>
+                                    <span class="risk-text">{{ alert.Risk_Score }}</span>
+                                    {% if alert.is_ml_anomaly %}
+                                        <span class="ml-badge">ML</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+        </div>
+        {% endif %}
+
+        <div class="upload-section">
+            <h3>{% if data %}Upload Another File{% else %}Upload a File to Get Started{% endif %}</h3>
+            <form method="post" enctype="multipart/form-data" action="/upload">
+                <input type="file" name="file" accept=".csv">
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

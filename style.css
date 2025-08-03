@@ -1,0 +1,31 @@
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; color: #333; }
+.container { max-width: 1200px; margin: auto; background: #fff; padding: 20px 40px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+h1, h2 { color: #1a2c5a; }
+.alert { padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px; }
+.alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+.alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+.alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+.upload-section { border-top: 1px solid #eee; margin-top: 30px; padding-top: 20px; }
+.dashboard { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; text-align: center; }
+.metric { background: #f0f4ff; padding: 20px; border-radius: 8px; }
+.metric h3 { margin-top: 0; color: #4a5568; }
+.metric p { font-size: 2em; font-weight: bold; margin: 10px 0 0 0; color: #1a2c5a; }
+.charts { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+ul { list-style: none; padding: 0; }
+li { background: #fafafa; padding: 10px; border-bottom: 1px solid #eee; }
+li strong { color: #555; }
+.alerts-section { margin-top: 40px; }
+.alerts-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+.alerts-table th, .alerts-table td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; vertical-align: middle; }
+.alerts-table th { background-color: #e6959a; color: #5c1a1f; }
+.alerts-table tr:nth-child(even) { background-color: #fafafa; }
+.risk-score-cell { display: flex; align-items: center; }
+.risk-bar-container { background-color: #e9ecef; border-radius: 5px; height: 15px; width: 100px; }
+.risk-bar { height: 100%; border-radius: 5px; }
+.risk-bar.low { background-color: #5cb85c; } /* Green */
+.risk-bar.medium { background-color: #f0ad4e; } /* Orange */
+.risk-bar.high { background-color: #d9534f; } /* Red */
+.risk-bar.critical { background-color: #a30f0c; } /* Dark Red */
+.risk-text { font-weight: bold; margin-left: 10px; }
+.ml-badge { background-color: #337ab7; color: white; padding: 3px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-left: 10px; }
