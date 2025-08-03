@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir .
 
 # Copy the application code into the container
+# The 'uploads' directory is created by the app at runtime, so it's not copied here.
 COPY app ./app
-COPY uploads ./uploads
 COPY run.py wsgi.py ./
 
 # Expose the port the app runs on
