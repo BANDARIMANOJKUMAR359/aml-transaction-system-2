@@ -43,6 +43,7 @@
                 </div>
             </div>
             <div class="charts">
+                {% if data.top_from_banks and data.top_to_banks %}
                 <div>
                     <h3>Flow of Funds: Top 5</h3>
                     <h4>Originating Banks (by Volume)</h4>
@@ -58,6 +59,8 @@
                     {% endfor %}
                     </ul>
                 </div>
+                {% endif %}
+                {% if data.payment_formats %}
                 <div>
                     <h3>Transaction Breakdown by Type</h3>
                     <ul>
@@ -66,6 +69,7 @@
                     {% endfor %}
                     </ul>
                 </div>
+                {% endif %}
             </div>
 
             {% if data.alerts %}
