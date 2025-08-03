@@ -8,27 +8,28 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /app
 
-# --- DEBUGGING STEP: List all files in the build context ---
-# This will show us exactly what files Render sees from your repo.
-COPY . .
-RUN ls -la
-# --- END DEBUGGING STEP ---
-
-# Copy dependency files
-# COPY requirements.txt setup.py ./
+# Copy dependency files first for better caching
+COPY requirements.txt ./
 
 # Install dependencies
-# Using setup.py makes the app package installable
-# RUN pip install --no-cache-dir -r requirements.txt
-# RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code into the container
-# The 'uploads' directory is created by the app at runtime, so it's not copied here.
-# COPY app ./app
-# COPY run.py wsgi.py ./
+# Create the directory structure that the Flask app expects
+RUN mkdir -p app/templates app/static
+
+# Copy the Python files into the 'app' directory
+COPY __init__.py app/
+COPY routes.py app/
+
+# Copy the HTML template and CSS file into their correct subdirectories
+COPY index.html app/templates/
+COPY style.css app/static/
+
+# Copy the WSGI entry point
+COPY wsgi.py ./
 
 # Expose the port the app runs on
-# EXPOSE 10000
+EXPOSE 10000
 
 # The command to run the application using a production-grade server
-# CMD ["gunicorn", "--bind", "0.0.0.0:10000", "wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "wsgi:application"]
