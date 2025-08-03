@@ -1,158 +1,105 @@
-from flask import current_app as app
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 import os
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder
+from werkzeug.utils import secure_filename
 
-@app.route('/')
-@app.route('/index')
-def index():
-    # Check if data is in the session and pass it to the template
-    dashboard_data = session.get('dashboard_data', None)
-    return render_template('index.html', data=dashboard_data)
-
-
-# Define the upload folder and allowed extensions
-UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads'))
-ALLOWED_EXTENSIONS = {'csv'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+main = Blueprint('main', __name__)
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in {'csv'}
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        flash('No file part', 'danger')
-        return redirect(url_for('index'))
-    file = request.files['file']
-    if file.filename == '':
-        flash('No selected file', 'warning')
-        return redirect(url_for('index'))
-    if file and allowed_file(file.filename):
-        filename = file.filename
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        flash(f'File "{filename}" successfully uploaded. Processing data...', 'success')
-        # Process the file and store data in the session
-        try:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            df = pd.read_csv(filepath)
-
-            # Basic data cleaning
-            df['Amount Paid'] = pd.to_numeric(df['Amount Paid'], errors='coerce')
-            df.dropna(subset=['Amount Paid', 'Payment Format'], inplace=True)
-
-            # --- Machine Learning Anomaly Detection ---
-            # 1. Feature Engineering
-            features = df[['Amount Paid', 'Payment Format']]
-            encoder = OneHotEncoder(handle_unknown='ignore')
-            encoded_formats = encoder.fit_transform(features[['Payment Format']])
-            encoded_df = pd.DataFrame(encoded_formats.toarray(), columns=encoder.get_feature_names_out(['Payment Format']))
+@main.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash('No selected file', 'warning')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
             
-            # Combine numerical and encoded features
-            ml_features = pd.concat([df[['Amount Paid']].reset_index(drop=True), encoded_df], axis=1)
+            upload_dir = os.path.join(os.path.dirname(main.root_path), 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, filename)
+            
+            file.save(filepath)
 
-            # 2. Train Isolation Forest Model
-            model = IsolationForest(contamination='auto', random_state=42)
-            df['ml_anomaly'] = model.fit_predict(ml_features)
+            try:
+                df = pd.read_csv(filepath)
+                required_columns = ['amount', 'payment_format', 'is_laundering', 'customer_id', 'receiving_bank']
+                if not all(col in df.columns for col in required_columns):
+                    flash(f'CSV must contain the following columns: {required_columns}', 'danger')
+                    return redirect(request.url)
 
+                df.columns = df.columns.str.strip()
+                df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
+                df.dropna(subset=['amount'], inplace=True)
 
-            # Calculate metrics
-            total_volume = df['Amount Paid'].sum()
-            total_transactions = len(df)
-            payment_format_counts = df['Payment Format'].value_counts().to_dict()
+                encoder = OneHotEncoder(handle_unknown='ignore')
+                ml_features = encoder.fit_transform(df[['payment_format']])
+                model = IsolationForest(contamination='auto', random_state=42)
+                df['ml_anomaly'] = model.fit_predict(ml_features)
 
-            # --- Detailed Insights ---
-            # Flow of Funds
-            top_from_banks = df.groupby('From Bank')['Amount Paid'].sum().nlargest(5).to_dict()
-            top_to_banks = df.groupby('To Bank')['Amount Paid'].sum().nlargest(5).to_dict()
+                customer_baselines = df.groupby('customer_id')['amount'].agg(['mean', 'std']).fillna(0)
 
-            # Transaction Analysis
-            avg_transaction = df['Amount Paid'].mean()
-            max_transaction = df['Amount Paid'].max()
-            min_transaction = df['Amount Paid'].min()
+                def calculate_risk(row):
+                    score = 0
+                    if row['amount'] > 10000: score += 20
+                    if row['amount'] > 50000: score += 30
+                    payment_risk = {'cash': 30, 'wire': 20, 'credit': 10, 'debit': 5}
+                    score += payment_risk.get(row['payment_format'].lower(), 0)
+                    if row['is_laundering'] == 1: score += 50
+                    customer_stats = customer_baselines.loc[row['customer_id']]
+                    if row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
+                        score += 25
+                    if row['ml_anomaly'] == -1:
+                        score += 30
+                    return min(score, 100)
 
-            # --- Behavioral Pattern Analysis ---
-            # Calculate baseline (average transaction amount per account)
-            account_baselines = df.groupby('From Bank')['Amount Paid'].mean().to_dict()
+                df['risk_score'] = df.apply(calculate_risk, axis=1)
+                suspicious_df = df[df['risk_score'] >= 60].sort_values(by='risk_score', ascending=False)
+                
+                suspicious_alerts = []
+                for index, row in suspicious_df.head(20).iterrows():
+                    suspicious_alerts.append({
+                        'customer': row.get('customer_id', 'N/A'),
+                        'amount': row['amount'],
+                        'receiving_bank': row.get('receiving_bank', 'N/A'),
+                        'risk_score': row['risk_score'],
+                        'is_ml_anomaly': row['ml_anomaly'] == -1
+                    })
 
-            # --- Dynamic Risk Scoring and Alerts ---
-            def calculate_risk_score(row):
-                score = 0
-                amount = row['Amount Paid']
-                from_bank = row['From Bank']
+                session['dashboard_data'] = {
+                    'total_volume': df['amount'].sum(),
+                    'total_transactions': len(df),
+                    'payment_formats': df['payment_format'].value_counts().to_dict(),
+                    'avg_transaction': df['amount'].mean(),
+                    'largest_transaction': df['amount'].max(),
+                    'smallest_transaction': df['amount'].min(),
+                    'top_banks_by_volume': df.groupby('receiving_bank')['amount'].sum().nlargest(5).to_dict(),
+                    'suspicious_alerts': suspicious_alerts
+                }
+                flash('File successfully processed!', 'success')
 
-                # 1. Amount-based score (up to 50 points)
-                if amount > 500000: score += 50
-                elif amount > 100000: score += 40
-                elif amount > 10000: score += 15
+            except Exception as e:
+                flash(f'An error occurred: {e}', 'danger')
+            finally:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            return redirect(url_for('main.index'))
 
-                # 2. Payment Format-based score (up to 20 points)
-                payment_format_risk = {'Cheque': 10, 'Reinvestment': 5, 'Cash': 20, 'Credit Card': 15}
-                score += payment_format_risk.get(row['Payment Format'], 10)
+    dashboard_data = session.get('dashboard_data', None)
+    return render_template('index.html', data=dashboard_data)
 
-                # 3. Behavioral Anomaly score (up to 25 points)
-                account_avg = account_baselines.get(from_bank, amount) # Use current amount if no history
-                if amount > account_avg * 10: score += 25
-                elif amount > account_avg * 5: score += 15
+@main.route('/clear')
+def clear_session():
+    session.pop('dashboard_data', None)
+    flash('Dashboard has been cleared.', 'info')
+    return redirect(url_for('main.index'))
 
-                # 4. Machine Learning Anomaly Score (up to 30 points)
-                if row['ml_anomaly'] == -1: # -1 indicates an anomaly
-                    score += 30
-
-                # 5. Laundering Flag (heavy penalty)
-                if row['Is Laundering'] == 1: score += 100
-
-                return min(score, 100)
-
-
-            df['risk_score'] = df.apply(calculate_risk_score, axis=1)
-            risk_threshold = 60 # Alert if risk score is above 60
-            suspicious_transactions = df[df['risk_score'] > risk_threshold].sort_values(by='risk_score', ascending=False)
-
-            alerts = []
-            for index, row in suspicious_transactions.head(20).iterrows(): # Show top 20 alerts
-                score = int(row['risk_score'])
-                if score > 90:
-                    risk_level = 'critical'
-                elif score > 70:
-                    risk_level = 'high'
-                elif score > 50:
-                    risk_level = 'medium'
-                else:
-                    risk_level = 'low'
-
-                alerts.append({
-                    'Timestamp': row['Timestamp'],
-                    'From_Bank': row['From Bank'],
-                    'To_Bank': row['To Bank'],
-                    'Amount': f"{row['Amount Paid']:,.2f}",
-                    'Risk_Score': score,
-                    'Risk_Level': risk_level,
-                    'is_ml_anomaly': row['ml_anomaly'] == -1
-                })
-
-            # Store data in session
-            session['dashboard_data'] = {
-                'filename': filename,
-                'total_volume': f'{total_volume:,.2f}',
-                'total_transactions': f'{total_transactions:,}',
-                'payment_formats': payment_format_counts,
-                'top_from_banks': {str(k): f'{v:,.2f}' for k, v in top_from_banks.items()},
-                'top_to_banks': {str(k): f'{v:,.2f}' for k, v in top_to_banks.items()},
-                'avg_transaction': f'{avg_transaction:,.2f}',
-                'max_transaction': f'{max_transaction:,.2f}',
-                'min_transaction': f'{min_transaction:,.2f}',
-                'alerts': alerts
-            }
-
-        except Exception as e:
-            flash(f'Error processing file: {e}', 'danger')
-            return redirect(url_for('index'))
-
-        return redirect(url_for('index'))
-    else:
-        flash('Invalid file type. Please upload a CSV file.', 'danger')
-        return redirect(url_for('index'))
