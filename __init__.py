@@ -1,6 +1,10 @@
 from flask import Flask
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'super-secret-key' # Change this in production!
+def create_app():
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = 'super-secret-key'
 
-from app import routes
+    with app.app_context():
+        from . import routes
+
+    return app
