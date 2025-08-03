@@ -5,6 +5,7 @@ import traceback
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder
 from werkzeug.utils import secure_filename
+from collections import Counter
 
 main = Blueprint('main', __name__)
 
@@ -24,86 +25,104 @@ def index():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            filepath = None # Initialize filepath
+            filepath = None
             try:
                 upload_dir = os.path.join(os.path.dirname(main.root_path), 'uploads')
                 os.makedirs(upload_dir, exist_ok=True)
                 filepath = os.path.join(upload_dir, filename)
                 file.save(filepath)
 
-                df = pd.read_csv(filepath)
-                
-                # --- Data Ingestion and Cleaning ---
-                # Strip whitespace from headers
-                df.columns = df.columns.str.strip()
+                # --- Memory-Efficient Processing ---
+                chunk_size = 10000  # Process 10,000 rows at a time
+                suspicious_alerts = []
+                total_volume = 0
+                total_transactions = 0
+                payment_formats = Counter()
+                largest_transaction = 0
+                smallest_transaction = float('inf')
+                top_banks_by_volume = Counter()
 
                 # Define the mapping from user's CSV columns to our internal names
                 column_mapping = {
                     'Amount Paid': 'amount',
                     'Payment Format': 'payment_format',
                     'Is Laundering': 'is_laundering',
-                    'Account': 'customer_id', # Assumes first 'Account' column is the customer
+                    'Account': 'customer_id',
                     'To Bank': 'receiving_bank'
                 }
 
-                # Check for required columns from the user's file
-                required_user_columns = list(column_mapping.keys())
-                # Handle the duplicate 'Account' column by checking for at least one
-                if 'Account' not in df.columns:
-                     flash(f'CSV must contain an "Account" column for customer ID.', 'danger')
-                     return redirect(request.url)
+                # First, get the headers to check them
+                df_head = pd.read_csv(filepath, nrows=0)
+                df_head.columns = df_head.columns.str.strip()
+                if 'Account' not in df_head.columns:
+                    flash('CSV must contain an "Account" column for customer ID.', 'danger')
+                    return redirect(request.url)
 
-                # Rename columns to our internal standard
-                df.rename(columns=column_mapping, inplace=True)
-                # The second 'Account' column becomes 'Account.1', which we don't use.
+                # Process the file in chunks
+                for chunk in pd.read_csv(filepath, chunksize=chunk_size):
+                    chunk.columns = chunk.columns.str.strip()
+                    chunk.rename(columns=column_mapping, inplace=True)
 
-                df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
-                df.dropna(subset=['amount'], inplace=True)
+                    chunk['amount'] = pd.to_numeric(chunk['amount'], errors='coerce')
+                    chunk.dropna(subset=['amount'], inplace=True)
 
-                # --- Machine Learning Anomaly Detection ---
-                encoder = OneHotEncoder(handle_unknown='ignore')
-                ml_features = encoder.fit_transform(df[['payment_format']])
-                model = IsolationForest(contamination='auto', random_state=42)
-                df['ml_anomaly'] = model.fit_predict(ml_features)
+                    if chunk.empty:
+                        continue
 
-                # --- Analysis and Metrics ---
-                customer_baselines = df.groupby('customer_id')['amount'].agg(['mean', 'std']).fillna(0)
+                    # --- Update Aggregates ---
+                    total_volume += chunk['amount'].sum()
+                    total_transactions += len(chunk)
+                    payment_formats.update(chunk['payment_format'])
+                    largest_transaction = max(largest_transaction, chunk['amount'].max())
+                    smallest_transaction = min(smallest_transaction, chunk['amount'].min())
+                    top_banks_by_volume.update(chunk.groupby('receiving_bank')['amount'].sum().to_dict())
 
-                def calculate_risk(row):
-                    score = 0
-                    if row['amount'] > 10000: score += 20
-                    if row['amount'] > 50000: score += 30
-                    payment_risk = {'cash': 30, 'wire': 20, 'credit': 10, 'debit': 5}
-                    score += payment_risk.get(str(row['payment_format']).lower(), 0)
-                    if row['is_laundering'] == 1: score += 50
-                    customer_stats = customer_baselines.loc[row['customer_id']]
-                    if row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
-                        score += 25
-                    if row['ml_anomaly'] == -1: score += 30
-                    return min(score, 100)
+                    # --- ML and Risk Scoring (on the chunk) ---
+                    encoder = OneHotEncoder(handle_unknown='ignore')
+                    ml_features = encoder.fit_transform(chunk[['payment_format']])
+                    model = IsolationForest(contamination='auto', random_state=42)
+                    chunk['ml_anomaly'] = model.fit_predict(ml_features)
 
-                df['risk_score'] = df.apply(calculate_risk, axis=1)
-                suspicious_df = df[df['risk_score'] >= 60].sort_values(by='risk_score', ascending=False)
+                    customer_baselines = chunk.groupby('customer_id')['amount'].agg(['mean', 'std']).fillna(0)
+
+                    def calculate_risk(row):
+                        score = 0
+                        if row['amount'] > 10000: score += 20
+                        if row['amount'] > 50000: score += 30
+                        payment_risk = {'cash': 30, 'wire': 20, 'credit': 10, 'debit': 5}
+                        score += payment_risk.get(str(row['payment_format']).lower(), 0)
+                        if row['is_laundering'] == 1: score += 50
+                        if row['customer_id'] in customer_baselines.index:
+                            customer_stats = customer_baselines.loc[row['customer_id']]
+                            if row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
+                                score += 25
+                        if row['ml_anomaly'] == -1: score += 30
+                        return min(score, 100)
+
+                    chunk['risk_score'] = chunk.apply(calculate_risk, axis=1)
+                    suspicious_df = chunk[chunk['risk_score'] >= 60]
+
+                    for index, row in suspicious_df.iterrows():
+                        suspicious_alerts.append({
+                            'customer': row.get('customer_id', 'N/A'),
+                            'amount': row['amount'],
+                            'receiving_bank': row.get('receiving_bank', 'N/A'),
+                            'risk_score': row['risk_score'],
+                            'is_ml_anomaly': row['ml_anomaly'] == -1
+                        })
                 
-                suspicious_alerts = []
-                for index, row in suspicious_df.head(20).iterrows():
-                    suspicious_alerts.append({
-                        'customer': row.get('customer_id', 'N/A'),
-                        'amount': row['amount'],
-                        'receiving_bank': row.get('receiving_bank', 'N/A'),
-                        'risk_score': row['risk_score'],
-                        'is_ml_anomaly': row['ml_anomaly'] == -1
-                    })
+                # Sort all alerts by risk score and take the top 20
+                suspicious_alerts.sort(key=lambda x: x['risk_score'], reverse=True)
 
                 session['dashboard_data'] = {
-                    'total_volume': df['amount'].sum(),
-                    'total_transactions': len(df),
-                    'payment_formats': df['payment_format'].value_counts().to_dict(),
-                    'avg_transaction': df['amount'].mean(),
-                    'largest_transaction': df['amount'].max(),
-                    'smallest_transaction': df['amount'].min(),
-                    'top_banks_by_volume': df.groupby('receiving_bank')['amount'].sum().nlargest(5).to_dict(),
-                    'suspicious_alerts': suspicious_alerts
+                    'total_volume': total_volume,
+                    'total_transactions': total_transactions,
+                    'payment_formats': dict(payment_formats),
+                    'avg_transaction': total_volume / total_transactions if total_transactions > 0 else 0,
+                    'largest_transaction': largest_transaction,
+                    'smallest_transaction': smallest_transaction if smallest_transaction != float('inf') else 0,
+                    'top_banks_by_volume': dict(top_banks_by_volume.most_common(5)),
+                    'suspicious_alerts': suspicious_alerts[:20]
                 }
                 flash('File successfully processed!', 'success')
 
