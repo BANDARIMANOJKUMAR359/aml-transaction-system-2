@@ -47,7 +47,7 @@ def index():
                     'Amount Paid': 'amount',
                     'Payment Format': 'payment_format',
                     'Is Laundering': 'is_laundering',
-                    'Account': 'customer_id',
+                    'Account': 'from_account', # First 'Account' column
                     'From Bank': 'from_bank',
                     'To Bank': 'to_bank',
                     'Timestamp': 'timestamp'
@@ -60,6 +60,11 @@ def index():
                     return redirect(request.url)
 
                 for chunk in pd.read_csv(filepath, chunksize=chunk_size):
+                    # Rename the second 'Account' column to 'to_account' before standard mapping
+                    cols = pd.Series(chunk.columns)
+                    cols.loc[cols.duplicated()] = 'to_account'
+                    chunk.columns = cols
+
                     chunk.columns = chunk.columns.str.strip()
                     chunk.rename(columns=column_mapping, inplace=True)
 
@@ -82,7 +87,8 @@ def index():
                     model = IsolationForest(contamination='auto', random_state=42)
                     chunk['ml_anomaly'] = model.fit_predict(ml_features)
 
-                    customer_baselines = chunk.groupby('customer_id')['amount'].agg(['mean', 'std']).fillna(0)
+                    # Use 'from_account' as the customer identifier
+                    customer_baselines = chunk.groupby('from_account')['amount'].agg(['mean', 'std']).fillna(0)
 
                     def calculate_risk(row):
                         score = 0
@@ -91,8 +97,8 @@ def index():
                         payment_risk = {'cash': 30, 'wire': 20, 'credit': 10, 'debit': 5}
                         score += payment_risk.get(str(row['payment_format']).lower(), 0)
                         if row['is_laundering'] == 1: score += 50
-                        if row['customer_id'] in customer_baselines.index:
-                            customer_stats = customer_baselines.loc[row['customer_id']]
+                        if row['from_account'] in customer_baselines.index:
+                            customer_stats = customer_baselines.loc[row['from_account']]
                             if row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
                                 score += 25
                         if row['ml_anomaly'] == -1: score += 30
@@ -105,7 +111,9 @@ def index():
                         alerts.append({
                             'Timestamp': row.get('timestamp', 'N/A'),
                             'From_Bank': row.get('from_bank', 'N/A'),
+                            'From_Account': row.get('from_account', 'N/A'),
                             'To_Bank': row.get('to_bank', 'N/A'),
+                            'To_Account': row.get('to_account', 'N/A'),
                             'Amount': f"{row['amount']:,.2f}",
                             'Risk_Score': row['risk_score'],
                             'is_ml_anomaly': row['ml_anomaly'] == -1

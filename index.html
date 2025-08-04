@@ -80,7 +80,9 @@
                         <tr>
                             <th>Timestamp</th>
                             <th>From Bank</th>
+                            <th>From Account</th>
                             <th>To Bank</th>
+                            <th>To Account</th>
                             <th>Amount (USD)</th>
                             <th>Risk Score</th>
                         </tr>
@@ -90,7 +92,9 @@
                         <tr>
                             <td>{{ alert.Timestamp }}</td>
                             <td>{{ alert.From_Bank }}</td>
+                            <td>{{ alert.From_Account }}</td>
                             <td>{{ alert.To_Bank }}</td>
+                            <td>{{ alert.To_Account }}</td>
                             <td>${{ alert.Amount }}</td>
                             <td>
                                 <div class="risk-score-cell">
