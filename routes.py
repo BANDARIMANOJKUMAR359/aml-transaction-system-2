@@ -103,16 +103,30 @@ def index():
 
                     def calculate_risk(row):
                         score = 0
-                        if row['amount'] > 10000: score += 20
-                        if row['amount'] > 50000: score += 30
-                        payment_risk = {'cash': 30, 'wire': 20, 'credit': 10, 'debit': 5}
+                        # Amount-based risk (non-cumulative)
+                        if row['amount'] > 50000:
+                            score += 30
+                        elif row['amount'] > 10000:
+                            score += 15
+
+                        # Payment format risk
+                        payment_risk = {'cash': 20, 'wire': 15, 'credit': 5, 'debit': 0}
                         score += payment_risk.get(str(row['payment_format']).lower(), 0)
-                        if row['is_laundering'] == 1: score += 50
+
+                        # Known laundering flag (strong indicator)
+                        if row['is_laundering'] == 1:
+                            score += 40
+
+                        # Behavioral anomaly (deviation from customer's average)
                         if row['from_account'] in customer_baselines.index:
                             customer_stats = customer_baselines.loc[row['from_account']]
-                            if row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
+                            if customer_stats['std'] > 0 and row['amount'] > customer_stats['mean'] + 2 * customer_stats['std']:
                                 score += 25
-                        if row['ml_anomaly'] == -1: score += 30
+
+                        # Machine Learning anomaly
+                        if row['ml_anomaly'] == -1:
+                            score += 25
+
                         return min(score, 100)
 
                     chunk['risk_score'] = chunk.apply(calculate_risk, axis=1)

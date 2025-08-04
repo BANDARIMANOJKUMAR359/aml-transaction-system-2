@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AML Transaction Monitoring</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
-        <div class="container">
-        <h1>AML Transaction Monitoring System</h1>
+    <div class="container">
+        <div class="header">
+            <i data-feather="shield"></i>
+            <h1>AML Transaction Monitoring System</h1>
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -19,27 +24,45 @@
 
         {% if data %}
         <div class="dashboard">
-            <h2>Dashboard for: <strong>{{ data.filename }}</strong></h2>
+            <div class="dashboard-header">
+                <h2>Dashboard for: <strong>{{ data.filename }}</strong></h2>
+                <a href="{{ url_for('main.clear_session') }}" class="clear-btn">Clear Dashboard</a>
+            </div>
             <div class="metrics">
                 <div class="metric">
-                    <h3>Total Transaction Volume (USD)</h3>
-                    <p>${{ data.total_volume }}</p>
+                    <div class="metric-icon"><i data-feather="dollar-sign"></i></div>
+                    <div class="metric-content">
+                        <h3>Total Volume (USD)</h3>
+                        <p>${{ data.total_volume }}</p>
+                    </div>
                 </div>
                 <div class="metric">
-                    <h3>Total Transactions</h3>
-                    <p>{{ data.total_transactions }}</p>
+                    <div class="metric-icon"><i data-feather="list"></i></div>
+                    <div class="metric-content">
+                        <h3>Total Transactions</h3>
+                        <p>{{ data.total_transactions }}</p>
+                    </div>
                 </div>
                 <div class="metric">
-                    <h3>Average Transaction</h3>
-                    <p>${{ data.avg_transaction }}</p>
+                    <div class="metric-icon"><i data-feather="divide-circle"></i></div>
+                    <div class="metric-content">
+                        <h3>Average Transaction</h3>
+                        <p>${{ data.avg_transaction }}</p>
+                    </div>
                 </div>
                 <div class="metric">
-                    <h3>Largest Transaction</h3>
-                    <p>${{ data.max_transaction }}</p>
+                    <div class="metric-icon"><i data-feather="arrow-up-circle"></i></div>
+                    <div class="metric-content">
+                        <h3>Largest Transaction</h3>
+                        <p>${{ data.max_transaction }}</p>
+                    </div>
                 </div>
                 <div class="metric">
-                    <h3>Smallest Transaction</h3>
-                    <p>${{ data.min_transaction }}</p>
+                    <div class="metric-icon"><i data-feather="arrow-down-circle"></i></div>
+                    <div class="metric-content">
+                        <h3>Smallest Transaction</h3>
+                        <p>${{ data.min_transaction }}</p>
+                    </div>
                 </div>
             </div>
             <div class="charts">
@@ -121,9 +144,12 @@
             <h3>{% if data %}Upload Another File{% else %}Upload a File to Get Started{% endif %}</h3>
             <form method="post" enctype="multipart/form-data" action="{{ url_for('main.index') }}">
                 <input type="file" name="file" accept=".csv">
-                <button type="submit">Upload</button>
+                <button type="submit">Upload & Process</button>
             </form>
         </div>
     </div>
+    <script>
+      feather.replace()
+    </script>
 </body>
 </html>
