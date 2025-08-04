@@ -43,29 +43,37 @@ def index():
                 top_from_banks = Counter()
                 top_to_banks = Counter()
 
-                # Use a more robust way to handle duplicate 'Account' columns
-                # Read the header to get original column names
-                original_columns = pd.read_csv(filepath, nrows=0).columns.tolist()
+                # Read the header and check for required columns
+                df_head = pd.read_csv(filepath, nrows=0)
+                original_columns = [col.strip() for col in df_head.columns]
+                df_head.columns = original_columns
+
+                # Check for the two 'Account' columns needed
+                if original_columns.count('Account') < 2:
+                    flash('Error: The uploaded CSV file must contain at least two columns named "Account" (for From and To).', 'danger')
+                    return redirect(request.url)
 
                 # Find indices of 'Account' columns
                 account_indices = [i for i, col in enumerate(original_columns) if col == 'Account']
 
-                # Process the file in chunks
-                for chunk in pd.read_csv(filepath, chunksize=chunk_size, header=0, names=original_columns):
-                    chunk.columns = [f"{col}_{i}" if col == 'Account' else col for i, col in enumerate(original_columns)]
-                    
-                    column_mapping = {
-                        'Amount Paid': 'amount',
-                        'Payment Format': 'payment_format',
-                        'Is Laundering': 'is_laundering',
-                        f'Account_{account_indices[0]}': 'from_account',
-                        f'Account_{account_indices[1]}': 'to_account',
-                        'From Bank': 'from_bank',
-                        'To Bank': 'to_bank',
-                        'Timestamp': 'timestamp'
-                    }
+                # Define the column mapping using the found indices
+                column_mapping = {
+                    'Amount Paid': 'amount',
+                    'Payment Format': 'payment_format',
+                    'Is Laundering': 'is_laundering',
+                    'From Bank': 'from_bank',
+                    'To Bank': 'to_bank',
+                    'Timestamp': 'timestamp'
+                }
 
-                    chunk.columns = chunk.columns.str.strip()
+                # Process the file in chunks
+                for chunk in pd.read_csv(filepath, chunksize=chunk_size):
+                    chunk.columns = [col.strip() for col in chunk.columns]
+                    # Manually rename the account columns based on their position
+                    chunk.rename(columns={
+                        chunk.columns[account_indices[0]]: 'from_account',
+                        chunk.columns[account_indices[1]]: 'to_account'
+                    }, inplace=True)
                     chunk.rename(columns=column_mapping, inplace=True)
 
                     chunk['amount'] = pd.to_numeric(chunk['amount'], errors='coerce')
