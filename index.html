@@ -66,77 +66,80 @@
                 </div>
             </div>
             <div class="charts">
-                {% if data.top_from_banks and data.top_to_banks %}
-                <div>
-                    <h3>Flow of Funds: Top 5</h3>
-                    <h4>Originating Banks (by Volume)</h4>
-                    <ul>
-                    {% for bank, amount in data.top_from_banks.items() %}
-                        <li><strong>Bank {{ bank }}:</strong> ${{ amount }}</li>
-                    {% endfor %}
-                    </ul>
-                    <h4 style="margin-top: 20px;">Receiving Banks (by Volume)</h4>
-                    <ul>
-                    {% for bank, amount in data.top_to_banks.items() %}
-                        <li><strong>Bank {{ bank }}:</strong> ${{ amount }}</li>
-                    {% endfor %}
-                    </ul>
+                <div class="chart-card">
+                    <h4>Top 5 Source Banks by Volume</h4>
+                    <div class="bar-chart">
+                        {% for bank, volume in data.top_from_banks.items() %}
+                        <div class="bar-item">
+                            <div class="bar-label">Bank {{ bank }}</div>
+                            <div class="bar-wrapper">
+                                <div class="bar" style="width: {{ (volume / data.top_from_banks.values()|max) * 100 }}%;"></div>
+                            </div>
+                            <div class="bar-value">${'{:,.0f}'.format(volume)}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
-                {% endif %}
-                {% if data.payment_formats %}
-                <div>
-                    <h3>Transaction Breakdown by Type</h3>
-                    <ul>
-                    {% for format, count in data.payment_formats.items() %}
-                        <li><strong>{{ format }}:</strong> {{ "{:,}".format(count) }} transactions</li>
-                    {% endfor %}
-                    </ul>
+                <div class="chart-card">
+                    <h4>Top 5 Destination Banks by Volume</h4>
+                    <div class="bar-chart">
+                        {% for bank, volume in data.top_to_banks.items() %}
+                        <div class="bar-item">
+                            <div class="bar-label">Bank {{ bank }}</div>
+                            <div class="bar-wrapper">
+                                <div class="bar" style="width: {{ (volume / data.top_to_banks.values()|max) * 100 }}%;"></div>
+                            </div>
+                            <div class="bar-value">${'{:,.0f}'.format(volume)}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
-                {% endif %}
             </div>
 
-            {% if data.alerts %}
             <div class="alerts-section">
-                <h2>Suspicious Activity Alerts</h2>
-                <table class="alerts-table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>From Bank</th>
-                            <th>From Account</th>
-                            <th>To Bank</th>
-                            <th>To Account</th>
-                            <th>Amount (USD)</th>
-                            <th>Risk Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for alert in data.alerts %}
-                        <tr>
-                            <td>{{ alert.Timestamp }}</td>
-                            <td>{{ alert.From_Bank }}</td>
-                            <td>{{ alert.From_Account }}</td>
-                            <td>{{ alert.To_Bank }}</td>
-                            <td>{{ alert.To_Account }}</td>
-                            <td>${{ alert.Amount }}</td>
-                            <td>
-                                <div class="risk-score-cell">
-                                    <div class="risk-bar-container">
-                                        <div class="risk-bar {{ alert.Risk_Level }}" style="width: {{ alert.Risk_Score }}%;"></div>
+                <h2 class="section-title">Suspicious Transaction Report (STR)</h2>
+                <div class="table-container">
+                    <table class="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>From Bank</th>
+                                <th>From Account</th>
+                                <th>To Bank</th>
+                                <th>To Account</th>
+                                <th>Amount (USD)</th>
+                                <th>Risk Score</th>
+                                <th>ML Flag</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in data.suspicious_alerts %}
+                            <tr>
+                                <td>{{ alert.Timestamp }}</td>
+                                <td>{{ alert.From_Bank }}</td>
+                                <td>{{ alert.From_Account }}</td>
+                                <td>{{ alert.To_Bank }}</td>
+                                <td>{{ alert.To_Account }}</td>
+                                <td>${{ alert.Amount }}</td>
+                                <td>
+                                    <div class="risk-score-cell">
+                                        <span>{{ alert.Risk_Score }}</span>
+                                        <div class="risk-bar-container">
+                                            <div class="risk-bar {{ alert.Risk_Level }}" style="width: {{ alert.Risk_Score }}%;"></div>
+                                        </div>
                                     </div>
-                                    <span class="risk-text">{{ alert.Risk_Score }}</span>
-                                    {% if alert.is_ml_anomaly %}
-                                        <span class="ml-badge">ML</span>
+                                </td>
+                                <td>
+                                    {% if alert.ML_Anomaly == -1 %}
+                                    <span class="ml-badge">ML</span>
                                     {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            {% endif %}
-
         </div>
         {% endif %}
 
