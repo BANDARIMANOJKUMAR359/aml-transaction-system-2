@@ -154,6 +154,17 @@ def index():
             return redirect(url_for('main.index'))
 
     dashboard_data = session.get('dashboard_data', None)
+    # Robustness check: If loading old session data, ensure the new keys exist to prevent crashes.
+    if dashboard_data and 'top_from_banks_raw' not in dashboard_data:
+        # Rebuild the raw data from the formatted strings (this is a one-time fix for old sessions)
+        try:
+            dashboard_data['top_from_banks_raw'] = {k: float(v.replace(',', '')) for k, v in dashboard_data.get('top_from_banks', {}).items()}
+            dashboard_data['top_to_banks_raw'] = {k: float(v.replace(',', '')) for k, v in dashboard_data.get('top_to_banks', {}).items()}
+        except (ValueError, AttributeError):
+            # If conversion fails, clear the bad data to prevent a crash loop
+            dashboard_data = None
+            session.pop('dashboard_data', None)
+
     return render_template('index.html', data=dashboard_data)
 
 @main.route('/clear')
