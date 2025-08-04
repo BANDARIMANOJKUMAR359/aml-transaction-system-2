@@ -1,26 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
+:root {
+    --cognizant-blue: #0033a0;
+    --cognizant-blue-dark: #002269;
+    --cognizant-grey: #6a737b;
+    --background-color: #f5f8fa;
+    --card-background: #ffffff;
+    --text-color: #333333;
+    --header-text-color: #ffffff;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #f4f7f6;
-    color: #333;
+    background-color: var(--background-color);
+    color: var(--text-color);
     margin: 0;
     padding: 20px;
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1600px;
     margin: auto;
-    background-color: #ffffff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    background-color: var(--card-background);
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.07);
 }
 
 h1 {
-    color: #2c3e50;
+    color: var(--cognizant-blue);
     text-align: center;
     margin-bottom: 30px;
+    font-weight: 700;
 }
 
 .alert {
@@ -31,29 +42,10 @@ h1 {
     font-weight: 500;
 }
 
-.alert-success { 
-    color: #155724; 
-    background-color: #d4edda; 
-    border-color: #c3e6cb; 
-}
-
-.alert-danger { 
-    color: #721c24; 
-    background-color: #f8d7da; 
-    border-color: #f5c6cb; 
-}
-
-.alert-warning { 
-    color: #856404; 
-    background-color: #fff3cd; 
-    border-color: #ffeeba; 
-}
-
-.alert-info { 
-    color: #0c5460; 
-    background-color: #d1ecf1; 
-    border-color: #bee5eb; 
-}
+.alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+.alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+.alert-warning { color: #856404; background-color: #fff3cd; border-color: #ffeeba; }
+.alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb; }
 
 .dashboard {
     margin-top: 20px;
@@ -61,56 +53,57 @@ h1 {
 
 .metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    margin-bottom: 35px;
 }
 
 .metric {
-    background-color: #f8f9fa;
+    background-color: var(--card-background);
     padding: 25px;
-    border-radius: 10px;
+    border-radius: 8px;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid #eef2f5;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .metric:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 20px rgba(0, 51, 160, 0.1);
 }
 
 .metric h3 {
-    margin: 0 0 10px 0;
-    font-size: 1rem;
-    color: #5a6a7a;
+    margin: 0 0 12px 0;
+    font-size: 0.95rem;
+    color: var(--cognizant-grey);
     font-weight: 500;
+    text-transform: uppercase;
 }
 
 .metric p {
     margin: 0;
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    color: #2c3e50;
-    word-wrap: break-word; 
+    color: var(--cognizant-blue);
+    word-wrap: break-word;
 }
 
 .charts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 25px;
+    margin-bottom: 35px;
 }
 
 .charts > div {
-    background-color: #f8f9fa;
+    background-color: var(--card-background);
     padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-radius: 8px;
+    border: 1px solid #eef2f5;
 }
 
 .charts h3, .charts h4 {
-    color: #2c3e50;
+    color: var(--cognizant-blue);
 }
 
 .alerts-section {
@@ -124,23 +117,24 @@ h1 {
 }
 
 .alerts-table th, .alerts-table td {
-    padding: 12px 15px;
+    padding: 14px 16px;
     text-align: left;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #eef2f5;
 }
 
 .alerts-table thead th {
-    background-color: #34495e;
-    color: #ffffff;
+    background-color: var(--cognizant-blue);
+    color: var(--header-text-color);
     font-weight: 500;
+    text-transform: uppercase;
 }
 
 .alerts-table tbody tr:nth-child(even) {
-    background-color: #f8f9fa;
+    background-color: #fcfdff;
 }
 
 .alerts-table tbody tr:hover {
-    background-color: #e9ecef;
+    background-color: #eef2f5;
 }
 
 .risk-score-cell {
@@ -151,9 +145,9 @@ h1 {
 
 .risk-bar-container {
     width: 100px;
-    height: 10px;
+    height: 12px;
     background-color: #e0e0e0;
-    border-radius: 5px;
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -162,33 +156,27 @@ h1 {
     transition: width 0.5s ease-in-out;
 }
 
-.risk-bar.High { 
-    background-color: #e74c3c; 
-}
-
-.risk-bar.Medium { 
-    background-color: #f39c12; 
-}
-
-.risk-bar.Low { 
-    background-color: #2ecc71; 
-}
+.risk-bar.High { background-color: #e74c3c; }
+.risk-bar.Medium { background-color: #f39c12; }
+.risk-bar.Low { background-color: #2ecc71; }
 
 .ml-badge {
-    background-color: #3498db;
+    background-color: var(--cognizant-blue);
     color: white;
-    padding: 3px 6px;
-    border-radius: 10px;
-    font-size: 0.75em;
-    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
 .upload-section {
     margin-top: 40px;
     padding: 30px;
-    background-color: #f8f9fa;
-    border-radius: 10px;
+    background-color: #eef2f5;
+    border-radius: 8px;
     text-align: center;
+    border: 2px dashed var(--cognizant-blue);
 }
 
 .upload-section form {
@@ -198,16 +186,24 @@ h1 {
     gap: 15px;
 }
 
-.upload-section input[type="file"] {
-    border: 1px solid #ccc;
-    display: inline-block;
-    padding: 6px 12px;
-    cursor: pointer;
+.upload-section input[type="file"]::file-selector-button {
+    background-color: var(--cognizant-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
     border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.upload-section input[type="file"]::file-selector-button:hover {
+    background-color: var(--cognizant-blue-dark);
 }
 
 .upload-section button {
-    background-color: #3498db;
+    background-color: var(--cognizant-blue);
     color: white;
     border: none;
     padding: 10px 20px;
@@ -219,7 +215,7 @@ h1 {
 }
 
 .upload-section button:hover {
-    background-color: #2980b9;
+    background-color: var(--cognizant-blue-dark);
 }
 .risk-bar.medium { background-color: #f0ad4e; } /* Orange */
 .risk-bar.high { background-color: #d9534f; } /* Red */

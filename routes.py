@@ -43,27 +43,27 @@ def index():
                 top_from_banks = Counter()
                 top_to_banks = Counter()
 
-                column_mapping = {
-                    'Amount Paid': 'amount',
-                    'Payment Format': 'payment_format',
-                    'Is Laundering': 'is_laundering',
-                    'Account': 'from_account', # First 'Account' column
-                    'From Bank': 'from_bank',
-                    'To Bank': 'to_bank',
-                    'Timestamp': 'timestamp'
-                }
+                # Use a more robust way to handle duplicate 'Account' columns
+                # Read the header to get original column names
+                original_columns = pd.read_csv(filepath, nrows=0).columns.tolist()
 
-                df_head = pd.read_csv(filepath, nrows=0)
-                df_head.columns = df_head.columns.str.strip()
-                if 'Account' not in df_head.columns or 'From Bank' not in df_head.columns:
-                    flash('CSV must contain "Account", "From Bank", and "To Bank" columns.', 'danger')
-                    return redirect(request.url)
+                # Find indices of 'Account' columns
+                account_indices = [i for i, col in enumerate(original_columns) if col == 'Account']
 
-                for chunk in pd.read_csv(filepath, chunksize=chunk_size):
-                    # Rename the second 'Account' column to 'to_account' before standard mapping
-                    cols = pd.Series(chunk.columns)
-                    cols.loc[cols.duplicated()] = 'to_account'
-                    chunk.columns = cols
+                # Process the file in chunks
+                for chunk in pd.read_csv(filepath, chunksize=chunk_size, header=0, names=original_columns):
+                    chunk.columns = [f"{col}_{i}" if col == 'Account' else col for i, col in enumerate(original_columns)]
+                    
+                    column_mapping = {
+                        'Amount Paid': 'amount',
+                        'Payment Format': 'payment_format',
+                        'Is Laundering': 'is_laundering',
+                        f'Account_{account_indices[0]}': 'from_account',
+                        f'Account_{account_indices[1]}': 'to_account',
+                        'From Bank': 'from_bank',
+                        'To Bank': 'to_bank',
+                        'Timestamp': 'timestamp'
+                    }
 
                     chunk.columns = chunk.columns.str.strip()
                     chunk.rename(columns=column_mapping, inplace=True)
