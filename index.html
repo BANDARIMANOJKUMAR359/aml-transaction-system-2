@@ -94,6 +94,20 @@
                         {% endfor %}
                     </div>
                 </div>
+                <div class="chart-card">
+                    <h4>Top 5 Accounts by STR Count</h4>
+                    <div class="bar-chart">
+                        {% for user, count in data.top_suspicious_users.items() %}
+                        <div class="bar-item">
+                            <div class="bar-label">{{ user }}</div>
+                            <div class="bar-wrapper">
+                                <div class="bar" style="width: {{ (count / data.top_suspicious_users.values()|max) * 100 }}%;"></div>
+                            </div>
+                            <div class="bar-value">{{ count }} STRs</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
 
             <div class="alerts-section">

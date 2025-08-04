@@ -128,6 +128,10 @@ def index():
                 
                 suspicious_alerts.sort(key=lambda x: x['Risk_Score'], reverse=True)
 
+                # New Feature: Count top users with most STRs
+                str_user_counter = Counter(alert['From_Account'] for alert in suspicious_alerts)
+                top_suspicious_users = dict(str_user_counter.most_common(5))
+
                 session['dashboard_data'] = {
                     'filename': filename,
                     'total_volume': f'{total_volume:,.2f}',
@@ -140,6 +144,7 @@ def index():
                     'top_to_banks': {str(k): f'{v:,.0f}' for k, v in top_to_banks.most_common(5)},
                     'top_from_banks_raw': dict(top_from_banks.most_common(5)),
                     'top_to_banks_raw': dict(top_to_banks.most_common(5)),
+                    'top_suspicious_users': top_suspicious_users,
                     'suspicious_alerts': suspicious_alerts[:20]
                 }
                 flash('File successfully processed!', 'success')
