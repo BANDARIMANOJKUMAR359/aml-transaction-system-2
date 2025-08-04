@@ -136,8 +136,10 @@ def index():
                     'avg_transaction': f'{total_volume / total_transactions if total_transactions > 0 else 0:,.2f}',
                     'max_transaction': f'{largest_transaction:,.2f}',
                     'min_transaction': f'{smallest_transaction if total_transactions > 0 else 0:,.2f}',
-                    'top_from_banks': dict(top_from_banks.most_common(5)),
-                    'top_to_banks': dict(top_to_banks.most_common(5)),
+                    'top_from_banks': {str(k): f'{v:,.0f}' for k, v in top_from_banks.most_common(5)},
+                    'top_to_banks': {str(k): f'{v:,.0f}' for k, v in top_to_banks.most_common(5)},
+                    'top_from_banks_raw': dict(top_from_banks.most_common(5)),
+                    'top_to_banks_raw': dict(top_to_banks.most_common(5)),
                     'suspicious_alerts': suspicious_alerts[:20]
                 }
                 flash('File successfully processed!', 'success')

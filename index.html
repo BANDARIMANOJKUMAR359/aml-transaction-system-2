@@ -69,13 +69,13 @@
                 <div class="chart-card">
                     <h4>Top 5 Source Banks by Volume</h4>
                     <div class="bar-chart">
-                        {% for bank, volume in data.top_from_banks.items() %}
+                        {% for bank, volume_str in data.top_from_banks.items() %}
                         <div class="bar-item">
                             <div class="bar-label">Bank {{ bank }}</div>
                             <div class="bar-wrapper">
-                                <div class="bar" style="width: {{ (volume / data.top_from_banks.values()|max) * 100 }}%;"></div>
+                                <div class="bar" style="width: {{ (data.top_from_banks_raw[bank] / data.top_from_banks_raw.values()|max) * 100 }}%;"></div>
                             </div>
-                            <div class="bar-value">${'{:,.0f}'.format(volume)}</div>
+                            <div class="bar-value">${{ volume_str }}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -83,13 +83,13 @@
                 <div class="chart-card">
                     <h4>Top 5 Destination Banks by Volume</h4>
                     <div class="bar-chart">
-                        {% for bank, volume in data.top_to_banks.items() %}
+                        {% for bank, volume_str in data.top_to_banks.items() %}
                         <div class="bar-item">
                             <div class="bar-label">Bank {{ bank }}</div>
                             <div class="bar-wrapper">
-                                <div class="bar" style="width: {{ (volume / data.top_to_banks.values()|max) * 100 }}%;"></div>
+                                <div class="bar" style="width: {{ (data.top_to_banks_raw[bank] / data.top_to_banks_raw.values()|max) * 100 }}%;"></div>
                             </div>
-                            <div class="bar-value">${'{:,.0f}'.format(volume)}</div>
+                            <div class="bar-value">${{ volume_str }}</div>
                         </div>
                         {% endfor %}
                     </div>
